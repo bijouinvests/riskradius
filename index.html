@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RiskRadius™ - Complete Version</title>
+  
+  <!-- Tailwind CSS from CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React and ReactDOM from CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel for JSX transformation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body { margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const RiskRadiusApp = () => {
+      const quadrants = [
+        { name: 'Health', key: 'health', categories: ['hsa', 'ltc'], color: '#10B981' },
+        { name: 'Capital', key: 'capital', categories: ['brokerage', 'vul', 'wholeLife', 'bank'], color: '#3B82F6' },
+        { name: 'Growth', key: 'growth', categories: ['ira', 'employerPlan', 'business', 'vul', 'brokerage'], color: '#F59E0B' },
+        { name: 'Guaranteed', key: 'guaranteed', categories: ['incomeAnnuity', 'realEstate', 'wholeLife'], color: '#8B5CF6' }
+      ];
+
+      const categories = [
+        { name: 'Income Annuity', key: 'incomeAnnuity', characteristics: ['income', 'guaranteed'] },
+        { name: 'Real Estate', key: 'realEstate', characteristics: ['income', 'capital', 'growth', 'legacy'] },
+        { name: 'Whole Life', key: 'wholeLife', characteristics: ['income', 'capital', 'taxFree', 'guaranteed', 'legacy'] },
+        { name: 'Bank', key: 'bank', characteristics: ['capital', 'guaranteed'] },
+        { name: 'VUL', key: 'vul', characteristics: ['income', 'capital', 'taxFree', 'growth', 'legacy'] },
+        { name: 'IRA', key: 'ira', characteristics: ['income', 'growth'] },
+        { name: 'Employer Sponsored Plan', key: 'employerPlan', characteristics: ['income', 'growth'] },
+        { name: 'Brokerage', key: 'brokerage', characteristics: ['income', 'capital', 'legacy', 'growth'] },
+        { name: 'Business', key: 'business', characteristics: ['income', 'growth', 'legacy'] },
+        { name: 'LTC', key: 'ltc', characteristics: ['taxFree', 'guaranteed'] },
+        { name: 'HSA', key: 'hsa', characteristics: ['taxFree', 'growth', 'guaranteed'] },
+        { name: 'Pension', key: 'pension', characteristics: ['income', 'guaranteed'] }
+      ];
+
+      const characteristics = [
+        { name: 'Income', key: 'income', color: '#7B3FF2' },
+        { name: 'Capital', key: 'capital', color: '#2ECC71' },
+        { name: 'Tax Free', key: 'taxFree', color: '#E74C3C' },
+        { name: 'Growth', key: 'growth', color: '#F1C40F' },
+        { name: 'Guaranteed', key: 'guaranteed', color: '#3498DB' },
+        { name: 'Legacy', key: 'legacy', color: '#E67E22' }
+      ];
+
+      const [clientMode, setClientMode] = useState('individual');
+      const [clientName, setClientName] = useState('');
+      const [clientName2, setClientName2] = useState('');
+      const [clientBirthday, setClientBirthday] = useState('');
+      const [clientBirthday2, setClientBirthday2] = useState('');
+      const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+      const [enabledCategories, setEnabledCategories] = useState(new Set());
+      const [enabledQuadrants, setEnabledQuadrants] = useState(new Set());
+      const [taxFreeEnabled, setTaxFreeEnabled] = useState({
+        client1: { ira: false, employerPlan: false },
+        client2: { ira: false, employerPlan: false }
+      });
+      const [categoryAmounts, setCategoryAmounts] = useState({
+        client1: Object.fromEntries(categories.map(c => [c.key, 0])),
+        client2: Object.fromEntries(categories.map(c => [c.key, 0]))
+      });
+
+      const toggleQuadrant = (key) => {
+        setEnabledQuadrants(prev => {
+          const newSet = new Set(prev);
+          newSet.has(key) ? newSet.delete(key) : newSet.add(key);
+          return newSet;
+        });
+      };
+
+      const toggleCategory = (key) => {
+        setEnabledCategories(prev => {
+          const newSet = new Set(prev);
+          newSet.has(key) ? newSet.delete(key) : newSet.add(key);
+          return newSet;
+        });
+      };
+
+      const toggleTaxFree = (categoryKey, client) => {
+        setTaxFreeEnabled(prev => ({
+          ...prev,
+          [client]: { ...prev[client], [categoryKey]: !prev[client][categoryKey] }
+        }));
+      };
+
+      const handleAmountChange = (categoryKey, value, client) => {
+        setCategoryAmounts(prev => ({
+          ...prev,
+          [client]: { ...prev[client], [categoryKey]: parseFloat(value) || 0 }
+        }));
+      };
+
+      const getVisibleCategories = () => {
+        if (enabledQuadrants.size === 0) return new Set();
+        const visible = new Set();
+        enabledQuadrants.forEach(qKey => {
+          const quad = quadrants.find(q => q.key === qKey);
+          if (quad) quad.categories.forEach(c => visible.add(c));
+        });
+        return visible;
+      };
+
+      const getEnabledCategories = () => {
+        const visible = getVisibleCategories();
+        return categories.filter(cat => visible.has(cat.key) && enabledCategories.has(cat.key));
+      };
+
+      const categoryHasCharacteristic = (categoryKey, charKey) => {
+        const category = categories.find(c => c.key === categoryKey);
+        if (!category) return false;
+        if ((categoryKey === 'ira' || categoryKey === 'employerPlan') && charKey === 'taxFree') {
+          return clientMode === 'couple' 
+            ? taxFreeEnabled.client1[categoryKey] || taxFreeEnabled.client2[categoryKey]
+            : taxFreeEnabled.client1[categoryKey];
+        }
+        return category.characteristics.includes(charKey);
+      };
+
+      const formatCurrency = (value) => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0
+        }).format(value);
+      };
+
+      const calculateTotal = () => {
+        const client1Total = Object.entries(categoryAmounts.client1)
+          .filter(([key]) => enabledCategories.has(key))
+          .reduce((sum, [, amount]) => sum + amount, 0);
+        if (clientMode === 'couple') {
+          const client2Total = Object.entries(categoryAmounts.client2)
+            .filter(([key]) => enabledCategories.has(key))
+            .reduce((sum, [, amount]) => sum + amount, 0);
+          return client1Total + client2Total;
+        }
+        return client1Total;
+      };
+
+      const calculateRiskScore = () => {
+        const enabledCats = Array.from(enabledCategories);
+        if (enabledCats.length === 0) return 0;
+        const quadrantCoverage = {};
+        quadrants.forEach(quad => {
+          const categoriesInQuadrant = quad.categories.filter(cat => enabledCats.includes(cat));
+          quadrantCoverage[quad.key] = (categoriesInQuadrant.length / quad.categories.length) * 100;
+        });
+        const avgCoverage = Object.values(quadrantCoverage).reduce((a, b) => a + b, 0) / 4;
+        return Math.round(avgCoverage);
+      };
+
+      const getRiskScoreLabel = (score) => {
+        if (score >= 75) return { label: 'Excellent Diversification', color: '#10B981', desc: 'Outstanding diversification across all quadrants.' };
+        if (score >= 50) return { label: 'Good Diversification', color: '#3B82F6', desc: 'Solid coverage but could benefit from additional categories.' };
+        if (score >= 25) return { label: 'Moderate Diversification', color: '#F59E0B', desc: 'Some coverage but significant gaps remain.' };
+        return { label: 'Limited Diversification', color: '#EF4444', desc: 'Would benefit from adding more categories.' };
+      };
+
+      const getRecommendations = () => {
+        const enabledCats = Array.from(enabledCategories);
+        const recommendations = [];
+        const priorityOrder = ['capital', 'guaranteed', 'growth', 'health'];
+        
+        priorityOrder.forEach(quadrantKey => {
+          const quadrant = quadrants.find(q => q.key === quadrantKey);
+          if (!quadrant) return;
+          const missingCategories = quadrant.categories
+            .filter(catKey => !enabledCats.includes(catKey))
+            .map(catKey => categories.find(c => c.key === catKey))
+            .filter(Boolean);
+          if (missingCategories.length > 0) {
+            recommendations.push({ quadrant: quadrant.name, color: quadrant.color, categories: missingCategories });
+          }
+        });
+        return recommendations;
+      };
+
+      const exportData = () => {
+        const chartData = {
+          version: '1.0',
+          clientMode,
+          clientName,
+          clientName2,
+          clientBirthday,
+          clientBirthday2,
+          reportDate,
+          enabledCategories: Array.from(enabledCategories),
+          enabledQuadrants: Array.from(enabledQuadrants),
+          taxFreeEnabled,
+          categoryAmounts,
+          exportDate: new Date().toISOString()
+        };
+        const dataStr = JSON.stringify(chartData, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `riskradius-data-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const importData = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const content = e.target.result;
+            const chartData = JSON.parse(content);
+            if (chartData.version && chartData.clientMode) {
+              setClientMode(chartData.clientMode);
+              setClientName(chartData.clientName || '');
+              setClientName2(chartData.clientName2 || '');
+              setClientBirthday(chartData.clientBirthday || '');
+              setClientBirthday2(chartData.clientBirthday2 || '');
+              setReportDate(chartData.reportDate || new Date().toISOString().split('T')[0]);
+              setEnabledCategories(new Set(chartData.enabledCategories || []));
+              setEnabledQuadrants(new Set(chartData.enabledQuadrants || []));
+              if (chartData.taxFreeEnabled) setTaxFreeEnabled(chartData.taxFreeEnabled);
+              if (chartData.categoryAmounts) setCategoryAmounts(chartData.categoryAmounts);
+              alert('Chart data loaded successfully!');
+            } else {
+              alert('Invalid file format.');
+            }
+          } catch (error) {
+            alert('Error reading file: ' + error.message);
+          }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+      };
+
+      const generateRandomData = () => {
+        const numQuadrants = Math.floor(Math.random() * 3) + 2;
+        const shuffledQuadrants = [...quadrants].sort(() => Math.random() - 0.5);
+        setEnabledQuadrants(new Set(shuffledQuadrants.slice(0, numQuadrants).map(q => q.key)));
+        
+        const visibleCats = new Set();
+        shuffledQuadrants.slice(0, numQuadrants).forEach(q => {
+          q.categories.forEach(c => visibleCats.add(c));
+        });
+        
+        const visibleArray = Array.from(visibleCats);
+        const numToSelect = Math.floor(visibleArray.length * (0.6 + Math.random() * 0.2));
+        const shuffledCats = visibleArray.sort(() => Math.random() - 0.5);
+        setEnabledCategories(new Set(shuffledCats.slice(0, numToSelect)));
+        
+        const newClient1 = {};
+        const newClient2 = {};
+        categories.forEach(cat => {
+          if (shuffledCats.slice(0, numToSelect).includes(cat.key)) {
+            newClient1[cat.key] = Math.floor(Math.random() * 49 + 1) * 10000;
+            newClient2[cat.key] = clientMode === 'couple' ? Math.floor(Math.random() * 49 + 1) * 10000 : 0;
+          } else {
+            newClient1[cat.key] = 0;
+            newClient2[cat.key] = 0;
+          }
+        });
+        
+        setCategoryAmounts({ client1: newClient1, client2: newClient2 });
+        setTaxFreeEnabled({
+          client1: { ira: Math.random() > 0.5, employerPlan: Math.random() > 0.5 },
+          client2: { ira: Math.random() > 0.5, employerPlan: Math.random() > 0.5 }
+        });
+      };
+
+      const generateCirclePaths = () => {
+        const centerX = 500;
+        const centerY = 500;
+        const maxRadius = 400;
+        const minRadius = 50;
+        const ringWidth = (maxRadius - minRadius) / 6;
+        const enabledCats = getEnabledCategories();
+        const numSlices = enabledCats.length;
+        if (numSlices === 0) return [];
+        const anglePerSlice = 360 / numSlices;
+        const paths = [];
+
+        enabledCats.forEach((cat, sliceIndex) => {
+          const startAngle = -90 + (sliceIndex * anglePerSlice);
+          const endAngle = startAngle + anglePerSlice;
+          characteristics.forEach((char, ringIndex) => {
+            if (categoryHasCharacteristic(cat.key, char.key)) {
+              const innerRadius = minRadius + ringIndex * ringWidth;
+              const outerRadius = minRadius + (ringIndex + 1) * ringWidth;
+              const startRad = (startAngle * Math.PI) / 180;
+              const endRad = (endAngle * Math.PI) / 180;
+              const x1 = centerX + innerRadius * Math.cos(startRad);
+              const y1 = centerY + innerRadius * Math.sin(startRad);
+              const x2 = centerX + outerRadius * Math.cos(startRad);
+              const y2 = centerY + outerRadius * Math.sin(startRad);
+              const x3 = centerX + outerRadius * Math.cos(endRad);
+              const y3 = centerY + outerRadius * Math.sin(endRad);
+              const x4 = centerX + innerRadius * Math.cos(endRad);
+              const y4 = centerY + innerRadius * Math.sin(endRad);
+              const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+              const path = `M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1} ${y1} Z`;
+              paths.push({ path, color: char.color, category: cat.name, characteristic: char.name });
+            }
+          });
+        });
+        return paths;
+      };
+
+      const generateLabels = () => {
+        const centerX = 500;
+        const centerY = 500;
+        const labelRadius = 420;
+        const enabledCats = getEnabledCategories();
+        const numSlices = enabledCats.length;
+        if (numSlices === 0) return [];
+        const anglePerSlice = 360 / numSlices;
+        return enabledCats.map((cat, index) => {
+          const angle = -90 + (index * anglePerSlice) + (anglePerSlice / 2);
+          const angleRad = (angle * Math.PI) / 180;
+          const x = centerX + labelRadius * Math.cos(angleRad);
+          const y = centerY + labelRadius * Math.sin(angleRad);
+          return { x, y, name: cat.name };
+        });
+      };
+
+      const paths = generateCirclePaths();
+      const labels = generateLabels();
+      const riskScore = calculateRiskScore();
+      const riskInfo = getRiskScoreLabel(riskScore);
+      const recommendations = getRecommendations();
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Client Info */}
+            <div className="bg-white rounded-2xl shadow-xl p-4 md:p-6 mb-6">
+              <h2 className="text-xl font-bold text-slate-800 mb-4">Client Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    {clientMode === 'couple' ? 'Client 1 Name' : 'Client Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="Enter name"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    {clientMode === 'couple' ? 'Client 1 Birthday' : 'Birthday'}
+                  </label>
+                  <input
+                    type="date"
+                    value={clientBirthday}
+                    onChange={(e) => setClientBirthday(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Report Date</label>
+                  <input
+                    type="date"
+                    value={reportDate}
+                    onChange={(e) => setReportDate(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              {clientMode === 'couple' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Client 2 Name</label>
+                    <input
+                      type="text"
+                      value={clientName2}
+                      onChange={(e) => setClientName2(e.target.value)}
+                      placeholder="Enter name"
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Client 2 Birthday</label>
+                    <input
+                      type="date"
+                      value={clientBirthday2}
+                      onChange={(e) => setClientBirthday2(e.target.value)}
+                      className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Client Mode */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+              <h2 className="text-xl font-bold text-slate-800 mb-4">
+                Is this RiskRadius™ for an individual or a couple?
+              </h2>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setClientMode('individual')}
+                  className={`flex-1 py-4 px-6 rounded-xl font-semibold transition-all ${
+                    clientMode === 'individual'
+                      ? 'bg-blue-600 text-white shadow-lg scale-105'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Individual
+                </button>
+                <button
+                  onClick={() => setClientMode('couple')}
+                  className={`flex-1 py-4 px-6 rounded-xl font-semibold transition-all ${
+                    clientMode === 'couple'
+                      ? 'bg-blue-600 text-white shadow-lg scale-105'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Couple
+                </button>
+              </div>
+            </div>
+
+            {/* Main Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h1 className="text-3xl md:text-4xl font-bold text-slate-800" style={{ fontFamily: 'Comic Sans MS, cursive' }}>
+                  RiskRadius™
+                </h1>
+                <div className="flex gap-3 flex-wrap">
+                  <button onClick={generateRandomData} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm">
+                    🎲 Test Data
+                  </button>
+                  <label className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 cursor-pointer text-sm">
+                    📥 Import
+                    <input type="file" accept=".json" onChange={importData} className="hidden" />
+                  </label>
+                  <button onClick={exportData} className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+                    💾 Export
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Chart */}
+                <div className="flex flex-col items-center bg-slate-50 rounded-xl p-8">
+                  <svg viewBox="0 0 1000 1000" className="w-full max-w-2xl">
+                    {[...Array(6)].map((_, i) => (
+                      <circle key={i} cx="500" cy="500" r={50 + (i + 1) * 58.33} fill="none" stroke="#e2e8f0" strokeWidth="1" />
+                    ))}
+                    {getEnabledCategories().map((_, index) => {
+                      const numSlices = getEnabledCategories().length;
+                      const angle = -90 + (index * (360 / numSlices));
+                      const angleRad = (angle * Math.PI) / 180;
+                      const x = 500 + 400 * Math.cos(angleRad);
+                      const y = 500 + 400 * Math.sin(angleRad);
+                      return <line key={index} x1="500" y1="500" x2={x} y2={y} stroke="#cbd5e1" strokeWidth="1" />;
+                    })}
+                    {paths.map((p, idx) => (
+                      <path key={idx} d={p.path} fill={p.color} stroke="white" strokeWidth="2" opacity="0.85" />
+                    ))}
+                    {labels.map((label, idx) => (
+                      <text key={idx} x={label.x} y={label.y} textAnchor="middle" fontSize="16" fontWeight="700" fill="#1e293b">
+                        {label.name}
+                      </text>
+                    ))}
+                    <circle cx="500" cy="500" r="50" fill="white" stroke={riskInfo.color} strokeWidth="3" />
+                    <text x="500" y="485" textAnchor="middle" fontSize="12" fontWeight="600" fill="#475569">Risk Score</text>
+                    <text x="500" y="508" textAnchor="middle" fontSize="24" fontWeight="700" fill={riskInfo.color}>{riskScore}</text>
+                    <text x="500" y="523" textAnchor="middle" fontSize="9" fontWeight="600" fill={riskInfo.color}>{riskInfo.label}</text>
+                  </svg>
+
+                  {/* Legend */}
+                  <div className="mt-6 grid grid-cols-2 gap-4 w-full">
+                    {characteristics.map(char => (
+                      <div key={char.key} className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded" style={{ backgroundColor: char.color }} />
+                        <div className="text-sm font-semibold text-slate-700">{char.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Inputs */}
+                <div className="bg-slate-50 rounded-xl p-6 max-h-[600px] overflow-y-auto">
+                  <h3 className="text-lg font-bold mb-3">Select Quadrants</h3>
+                  <div className="grid grid-cols-2 gap-3 mb-6 pb-6 border-b-2 border-slate-300">
+                    {quadrants.map(quad => (
+                      <label
+                        key={quad.key}
+                        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer border-2 ${
+                          enabledQuadrants.has(quad.key) ? 'bg-white shadow-md' : 'border-slate-200'
+                        }`}
+                        style={{ borderColor: enabledQuadrants.has(quad.key) ? quad.color : undefined }}
+                      >
+                        <input type="checkbox" checked={enabledQuadrants.has(quad.key)} onChange={() => toggleQuadrant(quad.key)} className="w-5 h-5" />
+                        <div className="font-bold text-slate-800">{quad.name}</div>
+                      </label>
+                    ))}
+                  </div>
+
+                  <h3 className="text-lg font-bold mb-3">Categories & Amounts</h3>
+                  <div className="space-y-3">
+                    {categories.filter(cat => getVisibleCategories().has(cat.key)).map(cat => (
+                      <div key={cat.key} className={`border rounded-lg p-3 ${enabledCategories.has(cat.key) ? 'bg-blue-50 border-blue-500' : 'border-slate-200'}`}>
+                        <label className="flex items-start gap-3">
+                          <input type="checkbox" checked={enabledCategories.has(cat.key)} onChange={() => toggleCategory(cat.key)} className="w-5 h-5 mt-0.5" />
+                          <div className="flex-1">
+                            <div className="font-semibold mb-2">{cat.name}</div>
+                            
+                            {/* Client 1 Section */}
+                            {clientMode === 'couple' && <div className="text-xs font-semibold text-slate-600 mb-1">Client 1</div>}
+                            
+                            {/* Tax-free toggle for IRA and Employer Plan */}
+                            {(cat.key === 'ira' || cat.key === 'employerPlan') && (
+                              <label className="flex items-center gap-2 text-xs mb-1">
+                                <input type="checkbox" checked={taxFreeEnabled.client1[cat.key]} onChange={() => toggleTaxFree(cat.key, 'client1')} className="w-3 h-3" />
+                                Roth
+                              </label>
+                            )}
+                            
+                            {/* Whole Life - Death Benefit & Cash Value */}
+                            {cat.key === 'wholeLife' && (
+                              <div className="space-y-2 mb-2">
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Death Benefit</label>
+                                  <input
+                                    type="number"
+                                    value={categoryAmounts.client1[cat.key] || ''}
+                                    onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client1')}
+                                    className="w-full px-3 py-2 text-sm border rounded"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Cash Value</label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* VUL - Death Benefit & Cash Value */}
+                            {cat.key === 'vul' && (
+                              <div className="space-y-2 mb-2">
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Death Benefit</label>
+                                  <input
+                                    type="number"
+                                    value={categoryAmounts.client1[cat.key] || ''}
+                                    onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client1')}
+                                    className="w-full px-3 py-2 text-sm border rounded"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Cash Value</label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* LTC - LTC Benefit, Death Benefit & Cash Value */}
+                            {cat.key === 'ltc' && (
+                              <div className="space-y-2 mb-2">
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">LTC Benefit</label>
+                                  <input
+                                    type="number"
+                                    value={categoryAmounts.client1[cat.key] || ''}
+                                    onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client1')}
+                                    className="w-full px-3 py-2 text-sm border rounded"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Death Benefit</label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Cash Value</label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Income Annuity - Annual Payout at 65 & Cash Out Value */}
+                            {cat.key === 'incomeAnnuity' && (
+                              <div className="space-y-2 mb-2">
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Annual Payout at 65</label>
+                                  <input
+                                    type="number"
+                                    value={categoryAmounts.client1[cat.key] || ''}
+                                    onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client1')}
+                                    className="w-full px-3 py-2 text-sm border rounded"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Cash Out Value</label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Business - Equity Value, Income & Asset Value */}
+                            {cat.key === 'business' && (
+                              <div className="space-y-2 mb-2">
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Equity Value</label>
+                                  <input
+                                    type="number"
+                                    value={categoryAmounts.client1[cat.key] || ''}
+                                    onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client1')}
+                                    className="w-full px-3 py-2 text-sm border rounded"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Income</label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-600 mb-1 block">Asset Value</label>
+                                  <input
+                                    type="number"
+                                    className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                    placeholder="$0"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Standard input for all other categories */}
+                            {!['wholeLife', 'vul', 'ltc', 'incomeAnnuity', 'business'].includes(cat.key) && (
+                              <input
+                                type="number"
+                                value={categoryAmounts.client1[cat.key] || ''}
+                                onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client1')}
+                                className="w-full px-3 py-2 text-sm border rounded mb-2"
+                                placeholder="$0"
+                              />
+                            )}
+                            
+                            {/* Client 2 Section (only for couple mode) */}
+                            {clientMode === 'couple' && (
+                              <>
+                                <div className="text-xs font-semibold text-slate-600 mb-1 mt-2">Client 2</div>
+                                
+                                {/* Tax-free toggle for IRA and Employer Plan - Client 2 */}
+                                {(cat.key === 'ira' || cat.key === 'employerPlan') && (
+                                  <label className="flex items-center gap-2 text-xs mb-1">
+                                    <input type="checkbox" checked={taxFreeEnabled.client2[cat.key]} onChange={() => toggleTaxFree(cat.key, 'client2')} className="w-3 h-3" />
+                                    Roth
+                                  </label>
+                                )}
+                                
+                                {/* Whole Life - Client 2 */}
+                                {cat.key === 'wholeLife' && (
+                                  <div className="space-y-2 mb-2">
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Death Benefit</label>
+                                      <input
+                                        type="number"
+                                        value={categoryAmounts.client2[cat.key] || ''}
+                                        onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client2')}
+                                        className="w-full px-3 py-2 text-sm border rounded"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Cash Value</label>
+                                      <input
+                                        type="number"
+                                        className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* VUL - Client 2 */}
+                                {cat.key === 'vul' && (
+                                  <div className="space-y-2 mb-2">
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Death Benefit</label>
+                                      <input
+                                        type="number"
+                                        value={categoryAmounts.client2[cat.key] || ''}
+                                        onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client2')}
+                                        className="w-full px-3 py-2 text-sm border rounded"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Cash Value</label>
+                                      <input
+                                        type="number"
+                                        className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* LTC - Client 2 */}
+                                {cat.key === 'ltc' && (
+                                  <div className="space-y-2 mb-2">
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">LTC Benefit</label>
+                                      <input
+                                        type="number"
+                                        value={categoryAmounts.client2[cat.key] || ''}
+                                        onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client2')}
+                                        className="w-full px-3 py-2 text-sm border rounded"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Death Benefit</label>
+                                      <input
+                                        type="number"
+                                        className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Cash Value</label>
+                                      <input
+                                        type="number"
+                                        className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Income Annuity - Client 2 */}
+                                {cat.key === 'incomeAnnuity' && (
+                                  <div className="space-y-2 mb-2">
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Annual Payout at 65</label>
+                                      <input
+                                        type="number"
+                                        value={categoryAmounts.client2[cat.key] || ''}
+                                        onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client2')}
+                                        className="w-full px-3 py-2 text-sm border rounded"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Cash Out Value</label>
+                                      <input
+                                        type="number"
+                                        className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Business - Client 2 */}
+                                {cat.key === 'business' && (
+                                  <div className="space-y-2 mb-2">
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Equity Value</label>
+                                      <input
+                                        type="number"
+                                        value={categoryAmounts.client2[cat.key] || ''}
+                                        onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client2')}
+                                        className="w-full px-3 py-2 text-sm border rounded"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Income</label>
+                                      <input
+                                        type="number"
+                                        className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-xs text-slate-600 mb-1 block">Asset Value</label>
+                                      <input
+                                        type="number"
+                                        className="w-full px-3 py-2 text-sm border rounded bg-slate-50"
+                                        placeholder="$0"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Standard input for all other categories - Client 2 */}
+                                {!['wholeLife', 'vul', 'ltc', 'incomeAnnuity', 'business'].includes(cat.key) && (
+                                  <input
+                                    type="number"
+                                    value={categoryAmounts.client2[cat.key] || ''}
+                                    onChange={(e) => handleAmountChange(cat.key, e.target.value, 'client2')}
+                                    className="w-full px-3 py-2 text-sm border rounded"
+                                    placeholder="$0"
+                                  />
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                    {getVisibleCategories().size === 0 && (
+                      <div className="text-center py-8 text-slate-500 text-sm">Select a quadrant above</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Risk Score */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+              <h2 className="text-2xl font-bold text-slate-800 mb-4">Portfolio Risk Score</h2>
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="text-6xl font-bold" style={{ color: riskInfo.color }}>{riskScore}/100</div>
+                    <div className="text-xl font-semibold mt-2" style={{ color: riskInfo.color }}>{riskInfo.label}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-slate-600 mb-2">Total Portfolio</div>
+                    <div className="text-2xl font-bold text-slate-800">{formatCurrency(calculateTotal())}</div>
+                  </div>
+                </div>
+                <p className="text-slate-600">{riskInfo.desc}</p>
+              </div>
+            </div>
+
+            {/* Recommendations */}
+            {recommendations.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-xl p-6">
+                <h2 className="text-2xl font-bold text-slate-800 mb-4">Recommended Next Steps</h2>
+                <p className="text-sm text-slate-600 mb-6">To improve diversification, add categories from these quadrants:</p>
+                <div className="space-y-4">
+                  {recommendations.map((rec, idx) => (
+                    <div key={idx} className="border-l-4 pl-4 py-3" style={{ borderColor: rec.color }}>
+                      <div className="font-bold text-lg mb-2" style={{ color: rec.color }}>
+                        {idx + 1}. {rec.quadrant} Quadrant
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {rec.categories.map(cat => (
+                          <span key={cat.key} className="px-3 py-1 rounded-full text-sm font-medium text-white" style={{ backgroundColor: rec.color }}>
+                            {cat.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<RiskRadiusApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
