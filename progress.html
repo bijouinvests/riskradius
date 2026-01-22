@@ -1,12 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>New Page</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
-<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Planning Journey</title>
@@ -19,8 +13,57 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            background: #045174;
             min-height: 100vh;
+            padding: 0;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            background: #045174;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+
+        .logo-link {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo {
+            height: 50px;
+            width: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 35px;
+            align-items: center;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: #f8dcbf;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 5px;
+        }
+
+        .nav-links a:hover {
+            color: #d4af37;
+            background: rgba(248, 220, 191, 0.1);
+        }
+
+        .main-content {
             padding: 20px;
         }
 
@@ -659,6 +702,81 @@
             width: 100%;
         }
 
+        /* Footer */
+        .footer {
+            background: #034561;
+            color: #f8dcbf;
+            padding: 40px 20px 20px;
+            margin-top: 60px;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+
+        .footer-section h3 {
+            color: #d4af37;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .footer-section p,
+        .footer-section a {
+            color: #f8dcbf;
+            line-height: 1.8;
+            font-size: 14px;
+            text-decoration: none;
+        }
+
+        .footer-section a:hover {
+            color: #d4af37;
+        }
+
+        .footer-links {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 10px;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(248, 220, 191, 0.2);
+            padding-top: 20px;
+            text-align: center;
+            color: #f8dcbf;
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .nav-links a {
+                width: 100%;
+                text-align: center;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -692,10 +810,46 @@
             .flow-horizontal-arrow {
                 transform: rotate(90deg);
             }
+
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 20px;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .nav-links a {
+                width: 100%;
+                text-align: center;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="https://mylocalfiduciary.com" class="logo-link">
+            <img src="data:image/webp;base64,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" class="logo" alt="My Local Fiduciary">
+        </a>
+        <ul class="nav-links">
+            <li><a href="https://mylocalfiduciary.com/progress">Progress</a></li>
+            <li><a href="https://mylocalfiduciary.com/riskradius">Risk Radius</a></li>
+            <li><a href="https://mylocalfiduciary.com/journey">Journey</a></li>
+            <li><a href="https://mylocalfiduciary.com/cashflowengine">Cashflow Engine</a></li>
+        </ul>
+    </nav>
+
+    <div class="main-content">
     <div class="container">
         <!-- Progress Tracker -->
         <div class="progress-tracker">
@@ -1329,5 +1483,43 @@
         // Initialize on page load
         window.onload = init;
     </script>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>About My Local Fiduciary</h3>
+                <p>Your trusted partner in comprehensive financial planning. We provide personalized strategies to help you achieve your financial goals with confidence and clarity.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul class="footer-links">
+                    <li><a href="https://mylocalfiduciary.com/progress">Progress Tracker</a></li>
+                    <li><a href="https://mylocalfiduciary.com/riskradius">Risk Radius™</a></li>
+                    <li><a href="https://mylocalfiduciary.com/journey">5 Year Journey</a></li>
+                    <li><a href="https://mylocalfiduciary.com/cashflowengine">Cashflow Engine</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Resources</h3>
+                <ul class="footer-links">
+                    <li><a href="https://mylocalfiduciary.com/about">About Us</a></li>
+                    <li><a href="https://mylocalfiduciary.com/services">Services</a></li>
+                    <li><a href="https://mylocalfiduciary.com/blog">Blog</a></li>
+                    <li><a href="https://mylocalfiduciary.com/contact">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contact</h3>
+                <ul class="footer-links">
+                    <li><a href="mailto:info@mylocalfiduciary.com">info@mylocalfiduciary.com</a></li>
+                    <li><a href="tel:+1234567890">(123) 456-7890</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 My Local Fiduciary. All rights reserved. | <a href="https://mylocalfiduciary.com/privacy" style="color: #d4af37;">Privacy Policy</a> | <a href="https://mylocalfiduciary.com/terms" style="color: #d4af37;">Terms of Service</a></p>
+        </div>
+    </footer>
 </body>
 </html>
